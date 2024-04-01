@@ -1,6 +1,3 @@
-# TODO 
-# Document using fileset?
-
 data "aws_caller_identity" "current" {}
 
 resource "aws_kms_key" "terraform_secrets" {
@@ -81,12 +78,4 @@ module "secrets" {
   aws_cli_config                = var.aws_cli_config
   assume_role                   = var.assume_role
   assume_role_with_web_identity = var.assume_role_with_web_identity
-}
-
-output "kms_key_arn" {
-  value = aws_kms_key.terraform_secrets.arn
-}
-
-output "kms_alias_arn" {
-  value = aws_kms_alias.terraform_secrets.arn
 }

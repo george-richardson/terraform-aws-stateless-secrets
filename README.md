@@ -1,6 +1,8 @@
 # Terraform AWS Stateless Secrets Module
 
-
+# TODO 
+* Document using fileset?
+* Write up this README
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
@@ -49,6 +51,6 @@
 
 | Name | Description |
 |------|-------------|
-| <a name="output_kms_alias_arn"></a> [kms\_alias\_arn](#output\_kms\_alias\_arn) | n/a |
-| <a name="output_kms_key_arn"></a> [kms\_key\_arn](#output\_kms\_key\_arn) | n/a |
+| <a name="output_kms_alias_arn"></a> [kms\_alias\_arn](#output\_kms\_alias\_arn) | The ARN of the KMS alias to be used to encrypt secret value or data keys for secrets to be stored in version control. |
+| <a name="output_kms_key_arn"></a> [kms\_key\_arn](#output\_kms\_key\_arn) | The ARN of the KMS key to be used to encrypt secret value or data keys for secrets to be stored in version control. |
 <!-- END_TF_DOCS -->
