@@ -5,10 +5,9 @@ variable "secret_id" {
 
 variable "encrypted_secret_value" {
   description = <<-EOF
-    Base64 encoded secret value that has been pre-encrypted by KMS.
+    Base64 encoded secret value that has been pre-encrypted using aws-encryption-cli.
     Required if encrypted_secret_value_file is not set.
-    When encrypted_data_key or encrypted_data_key_file is provided, this value must be encrypted with the data key.
-    Otherwise, this file must be encrypted with the KMS key identified by the encryption_key_id argument, if provided.
+    If encryption_key_id is set, this value must be encrypted with corresponding key.
   EOF
 
   type    = string
@@ -17,30 +16,9 @@ variable "encrypted_secret_value" {
 
 variable "encrypted_secret_value_file" {
   description = <<-EOF
-    File that contains that contains the base64 encoded secret value that has been pre-encrypted.
+    Path to base64 encoded secret file that has been pre-encrypted using aws-encryption-cli.
     Required if encrypted_secret_value is not set.
-    When encrypted_data_key or encrypted_data_key_file is provided, this file must be encrypted with the data key.
-    Otherwise, this file must be encrypted with the KMS key identified by the encryption_key_id argument, if provided.
-  EOF
-  type        = string
-  default     = null
-}
-
-variable "encrypted_data_key" {
-  description = <<-EOF
-    Base64 encoded data key for envelope encryption that has been pre-encrypted by KMS.
-    Required if encrypted_secret_value is not set.
-    If provided, must be encrypted with the KMS key identified by the encryption_key_id argument.
-  EOF
-  type        = string
-  default     = null
-}
-
-variable "encrypted_data_key_file" {
-  description = <<-EOF
-    File that contains that contains the Base64 encoded data key for envelope encryption that has been pre-encrypted by KMS.
-    Required if encrypted_secret_value is not set.
-    If provided, must be encrypted with the KMS key identified by the encryption_key_id argument.
+    If encryption_key_id is set, this value must be encrypted with corresponding key.
   EOF
   type        = string
   default     = null

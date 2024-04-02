@@ -22,19 +22,22 @@ variable "key_deletion_window_in_days" {
   default     = null
 }
 
+variable "alias_name" {
+  description = "Name of the KMS alias to create."
+  type        = string
+  default     = "terraform-secrets"
+}
+
 variable "secrets" {
   description = <<-EOF
     List of secrets to create in AWS Secrets Manager. 
     One of encrypted_secret_value or encrypted_secret_value_file is required.
-    Configuring either encrypted_data_key or encrypted_data_key_file will enable envelope encryption, used for larger secrets (>4KB).
 
     fields:
       name: Name of the secret to be created.
       description: Description of the secret.
-      encrypted_secret_value: Base64 encoded secret value that has been pre-encrypted by KMS.
-      encrypted_secret_value_file: File that contains that contains the base64 encoded secret value that has been pre-encrypted.
-      encrypted_data_key: Base64 encoded data key for envelope encryption that has been pre-encrypted by KMS.
-      encrypted_data_key_file: File that contains that contains the Base64 encoded data key for envelope encryption that has been pre-encrypted by KMS.
+      encrypted_secret_value: Base64 encoded secret value that has been pre-encrypted using aws-encryption-cli.
+      encrypted_secret_value_file: Path to base64 encoded secret file that has been pre-encrypted using aws-encryption-cli.
       policy: Resource based policy to attach to the secret.
       recovery_window_in_days: Number of days that AWS Secrets Manager waits before it can delete a secret.
       secret_kms_key_id: KMS key ID that will be configured for the secret.
@@ -47,8 +50,6 @@ variable "secrets" {
     secret_kms_key_id           = optional(string, null)
     encrypted_secret_value      = optional(string, null)
     encrypted_secret_value_file = optional(string, null)
-    encrypted_data_key          = optional(string, null)
-    encrypted_data_key_file     = optional(string, null)
     binary                      = optional(bool, false)
   }))
   default = []

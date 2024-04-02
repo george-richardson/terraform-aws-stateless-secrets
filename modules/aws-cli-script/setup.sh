@@ -13,13 +13,14 @@ function _error() {
 }
 
 _info "Checking dependencies..."
-command -v aws > /dev/null || _error "AWS CLI is required to run this script."
+command -v aws > /dev/null || _error "aws is required to run this script."
 _info "All dependencies are met."
 
 _info "Checking ambient AWS configuration is valid..."
 aws sts get-caller-identity --query 'Account' --output text > /dev/null || _error "Failed to authenticate with AWS. Check values used for aws_cli_config"
 _info "Succesfully authenticated with AWS."
 
+# Word splitting is intentional in the following stanza
 if [ -n "$ASSUME_ROLE_ARN" ]; then
   _info "Assuming role '$ASSUME_ROLE_ARN'..."
   ASSUME_ROLE_RESPONSE="$(
@@ -31,7 +32,7 @@ if [ -n "$ASSUME_ROLE_ARN" ]; then
       --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
       --output text
   )" || _error "Failed to assume role '$ASSUME_ROLE_ARN'. Ensure the role exists and the configured AWS principal has permissions to assume it."
-  export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s" $ASSUME_ROLE_RESPONSE) # Word splitting is intentional
+  export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s" $ASSUME_ROLE_RESPONSE)
   _info "Assumed role '$ASSUME_ROLE_ARN'..."
 fi
 if [ -n "$PROVIDER_ACCOUNT_ID" ]; then

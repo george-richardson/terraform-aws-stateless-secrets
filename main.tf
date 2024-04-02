@@ -8,7 +8,7 @@ resource "aws_kms_key" "terraform_secrets" {
 }
 
 resource "aws_kms_alias" "terraform_secrets" {
-  name          = "alias/terraform-secrets"
+  name          = "alias/${var.alias_name}"
   target_key_id = aws_kms_key.terraform_secrets.key_id
 }
 
@@ -68,12 +68,10 @@ module "secrets" {
   source   = "./modules/stateless-secret"
   for_each = { for secret in var.secrets : secret.name => secret }
 
-  encryption_key_id             = aws_kms_key.terraform_secrets.key_id
+  encryption_key_id             = aws_kms_key.terraform_secrets.arn
   secret_id                     = aws_secretsmanager_secret.secret[each.key].id
   encrypted_secret_value        = each.value.encrypted_secret_value
   encrypted_secret_value_file   = each.value.encrypted_secret_value_file
-  encrypted_data_key            = each.value.encrypted_data_key
-  encrypted_data_key_file       = each.value.encrypted_data_key_file
   binary                        = each.value.binary
   aws_cli_config                = var.aws_cli_config
   assume_role                   = var.assume_role
