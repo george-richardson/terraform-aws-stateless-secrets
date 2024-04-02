@@ -17,5 +17,6 @@ module "setter" {
   triggers_replace = [
     "Encrypted Secret Hash: ${var.encrypted_secret_value_file != null ? filemd5(var.encrypted_secret_value_file) : md5(var.encrypted_secret_value)}",
     "Secret ID: ${var.secret_id}",
+    "Is Binary: ${var.binary}",
   ]
 }
