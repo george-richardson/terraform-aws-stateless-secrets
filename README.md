@@ -78,9 +78,9 @@ You should understand the following points before deciding to use this module.
    will not be detected or reconciled.
 2. This module uses `local_exec` provisioners and bash scripts (see dependencies above). This reduces the portability
    of your Terraform configuration. For example, this module would be difficult to run on Windows. 
-3. The "setter" `terraform_data` resource which is used to actually run the local script has not destroy behaviour. 
+3. The "setter" `terraform_data` resource which is used to actually run the local script has no destroy behaviour. 
    Destroying this resource without destroying or changing the value of the underlying `aws_secrets_manager_secret` 
-   resource does change or wipe the secret value.
+   resource doesn't change or wipe the secret value.
 
 ## Security Considerations
 

@@ -1,4 +1,4 @@
-# AWS CLI Ccript Terraform Module
+# AWS CLI Script Terraform Module
 
 This module allows you to run a local-exec script with the AWS CLI configured similar to how you would configure a provisioner.
 Optionally, a role can also be assumed before running the provided command.
