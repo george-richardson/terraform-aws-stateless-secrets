@@ -17,25 +17,105 @@ security issues related to managing secrets via infrastucture as code. Use at yo
 
 ## Usage
 
-TBD
+[awscli]: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+[awsenc]: https://github.com/aws/aws-encryption-sdk-cli
+
+This module uses `local-exec` to call the [`aws` CLI][awscli], `base64`, and [`aws-encryption-cli`][awsenc] via a `bash`
+script. Ensure all are present on your `PATH` before using this module. 
 
 ### Basic Usage
 
-TBD
+First deploy this module with no configured secrets. This will create the KMS key you can use to pre-encrypt secrets. 
 
-#### Encrypting a secret
+```
+module "stateless_secrets" {
+  source = "george-richardson/stateless-secrets/aws"
+
+  secrets = []
+}
+
+output "aws_kms_key_arn" {
+  value = module.stateless_secrets.kms_key_arn
+}
+```
+
+Next pre-encrypt a secret.
+
+```
+# Get KMS key ARN from already deployed Terraform module
+KEY_ID=$(terraform output -raw aws_kms_key_arn)
+
+# Encrypt using above key. 
+# Output must be Base64 encoded (--encode)
+# This example is encrypting the file ~/my-secret and outputting to ./my-secret.enc
+aws-encryption-cli \
+  --encrypt \
+  --encode \
+  --input ~/my-secret \
+  --output my-secret.enc \
+  --wrapping-keys "key=$KEY_ID"
+```
+
+Now add the new secret to the module call, and run another `terraform apply`
+
+```
+module "stateless_secrets" {
+  source = "george-richardson/stateless-secrets/aws"
+
+  secrets = [
+    {
+      name                        = "my-secret"
+      encrypted_secret_value_file = "./my-secret.enc"
+    }
+  ]
+}
+```
 
 #### AWS Configuration
 
-#### Dependencies
+This module uses `local-exec` to populate secret values using the `aws` CLI and `aws-encryption-cli`, as such it does
+not inherit AWS authentication/authorisation configuration from the Terraform AWS provider and must be configured 
+separately. See the `aws_cli_config`, `assume_role`, and `assume_role_with_web_identity` variables.
 
-### Automatically creating secrets from a directory
-
-### Usage in an automation pipeline
-
-
+As a safety check, the account the CLI is configured to use will be validated against the one configured on the provider
+before any secrets are created.
 
 ### Setting a single secret
+
+You can use the [`stateless-secret` submodule](./modules/stateless-secret/) if you'd like to manage the _value_ of a
+single secret. This gives you more control of the KMS keys and secret configuration. 
+
+```
+resource "aws_secretsmanager_secret" "my_secret" {
+  name = "my-secret"
+}
+
+module "secret_value" {
+   source = "george-richardson/stateless-secrets/aws//modules/stateless-secret"
+
+   secret_id              = aws_secretsmanager_secret.my_secret.arn
+   encrypted_secret_value = "c29tZX...NlY3JldA=="
+}
+
+```
+
+## How it works 
+
+By default, this module will only deploy two KMS resources, an `aws_kms_key` and an `aws_kms_alias` pointing to it.
+These are to be used for the pre-encryption and subsequent decryption of values. See notes below on how to approach
+securing these. 
+
+For each secret configured, two more resources will be created: 
+
+1. An `aws_secretsmanager_secret`, used to track the lifecycle of a secret (but not its value).
+2. A `terraform_data` resource, which is used to trigger the `local-exec` provisioner for decrypting input encrypted
+   values and setting setting the value of the Secrets Manager secret. Only the md5 hash of the encrypted value is 
+   stored in this resource's state. As such, after an initial run to set the secret value, subsequent `plan` or `apply`
+   runs do not need to access the secret value. Changes to the encrypted value's md5 will cause redeployments of this
+   resource.
+
+All secrets are expected to have been pre-encrypted with the `aws-encryption-cli`, with base64 encoding. The
+`aws-encryption-cli` uses envelope encryption, with data keys saved in the resulting file alongside the ciphertext.
 
 ## Choosing suitable permissions for KMS keys and secrets
 
@@ -45,25 +125,46 @@ principle of least privilege, and any legal or compliance requirements that may 
 
 The below sections describe the permissions a principal will need to perform various actions related to this module. 
 Consider using explicit deny rules in IAM, SCP, or resource based policies to _prevent_ principals from accidentally 
-being granted more access than they require.
+being granted more access than they require, e.g. with the `key_policy` variable.
 
 ### Terraform plan
 
-To run a Terraform `plan` using this module (or Terraform apply that does not need to update secret values), the 
-following permissions are needed:
+To run a Terraform `plan` using this module (or `apply` that does not need to update secret values), the following
+permissions are needed:
 
+On the deployed KMS key:
+* `kms:DescribeKey`
+* `kms:ListAliases`
 
+On the deployed Secrets Manager secrets:
+* `secretsmanager:DescribeSecret`
+* `secretsmanager:GetResourcePolicy`
 
 ### Terraform apply
 
-To run a Terraform `apply` using this module which will set new secret values, the following permissions are needed:
+To run a Terraform `apply` using this module, the following permissions are needed in addition to those needed for 
+`plan`:
 
+To create the KMS key/alias: 
+* `kms:CreateKey`
+* `kms:CreateAlias`
 
+On the deployed KMS key:
+* `kms:Decrypt`
+
+To create Secrets Manager secrets and set their values:
+* `secretsmanager:CreateSecret`
+* `secretsmanager:PutSecretValue`
+
+(Note that the above does not include permissions needed to destroy resources)
 
 ### Pre-encryption
 
 To pre-encrypt a secret using this module, the following permissions are needed:
 
+On the deployed KMS key:
+* `kms:Encrypt`
+* `kms:GenerateDataKey`
 
 Note you can choose to allow principals to pre-encrypt secrets without granting them the `apply` permissions. This could
 be useful if you have automated `terraform apply`, effectively allowing engineers to set values via automation without
@@ -73,8 +174,8 @@ granting the ability to decrypt values themselves.
 
 You should understand the following points before deciding to use this module. 
 
-1. This module is _stateless_, therefore it cannot detect drift. Changes to secrets passed in to the module will be 
-   detected and updated appropriately. Changes to secret values made outside of Terraform (e.g. via the AWS console) 
+1. This module is mostly _stateless_, therefore it cannot detect drift. Changes to secrets passed in to the module will
+   be detected and updated appropriately. Changes to secret values made outside of Terraform (e.g. via the AWS console)
    will not be detected or reconciled.
 2. This module uses `local_exec` provisioners and bash scripts (see dependencies above). This reduces the portability
    of your Terraform configuration. For example, this module would be difficult to run on Windows. 
@@ -103,6 +204,8 @@ You should understand the following points before deciding to use this module.
 5. Be careful not to create privilge escalation opportunities when running this module via automation. e.g. granting 
    an automated pull request triggered `plan` run more priviliges than the user who triggered it, allowing them to 
    retrieve values by adding Terraform `output`s to a branch.
+6. You shouldn't trust random code you find on the internet. At a minimum you should review the code of this module. 
+   Consider forking this repository, or otherwise taking a copy, to avoid supply chain attacks on your secrets. 
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
