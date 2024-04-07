@@ -1,6 +1,6 @@
 # AWS CLI Script Terraform Module
 
-This module allows you to run a local-exec script with the AWS CLI configured similar to how you would configure a provisioner.
+This module allows you to run a local-exec script with the AWS CLI configured similar to how you would configure a provider.
 Optionally, a role can also be assumed before running the provided command.
 
 Note: No actions will be taken on destroy. Destroy provisioners do not have access to variables and so the AWS CLI cannot be safely configured. 

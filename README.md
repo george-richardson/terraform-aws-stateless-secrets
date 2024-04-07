@@ -101,6 +101,8 @@ module "secret_value" {
 
 ## How it works 
 
+[setter]: ./modules/stateless-secret/setter.sh
+
 By default, this module will only deploy two KMS resources, an `aws_kms_key` and an `aws_kms_alias` pointing to it.
 These are to be used for the pre-encryption and subsequent decryption of values. See notes below on how to approach
 securing these. 
@@ -108,13 +110,15 @@ securing these.
 For each secret configured, two more resources will be created: 
 
 1. An `aws_secretsmanager_secret`, used to track the lifecycle of a secret (but not its value).
-2. A `terraform_data` resource, which is used to trigger the `local-exec` provisioner for decrypting input encrypted
-   values and setting setting the value of the Secrets Manager secret. Only the md5 hash of the encrypted value is 
-   stored in this resource's state. As such, after an initial run to set the secret value, subsequent `plan` or `apply`
-   runs do not need to access the secret value. Changes to the encrypted value's md5 will cause redeployments of this
-   resource.
+2. A `terraform_data` resource, which uses a `local-exec` provisioner to trigger the [`setter.sh` script][setter].
 
-All secrets are expected to have been pre-encrypted with the `aws-encryption-cli`, with base64 encoding. The
+The `setter.sh` script is used for decrypting the pre-encrypted secret value inputs with `kms:Decrypt` before setting
+the value of the Secrets Manager secret with `secretsmanager:PutSecretValue`. Only the md5 hash of the encrypted value
+is stored in this resource's state. As such, after an initial run to set the secret value, subsequent `plan` or `apply`
+runs do not need to access the secret value. Changes to the encrypted value's md5 will cause redeployment of this
+resource.
+
+All secrets are expected to have been pre-encrypted using the `aws-encryption-cli` with base64 encoding. 
 `aws-encryption-cli` uses envelope encryption, with data keys saved in the resulting file alongside the ciphertext.
 
 ## Choosing suitable permissions for KMS keys and secrets
@@ -134,6 +138,10 @@ permissions are needed:
 
 On the deployed KMS key:
 * `kms:DescribeKey`
+* `kms:GetKeyRotationStatus`
+* `kms:GetKeyPolicy`
+
+On KMS in general:
 * `kms:ListAliases`
 
 On the deployed Secrets Manager secrets:
@@ -148,11 +156,11 @@ To run a Terraform `apply` using this module, the following permissions are need
 To create the KMS key/alias: 
 * `kms:CreateKey`
 * `kms:CreateAlias`
-
-On the deployed KMS key:
-* `kms:Decrypt`
+* `kms:EnableKeyRotation`
+* `kms:PutKeyPolicy`
 
 To create Secrets Manager secrets and set their values:
+* `kms:Decrypt`
 * `secretsmanager:CreateSecret`
 * `secretsmanager:PutSecretValue`
 
@@ -163,7 +171,6 @@ To create Secrets Manager secrets and set their values:
 To pre-encrypt a secret using this module, the following permissions are needed:
 
 On the deployed KMS key:
-* `kms:Encrypt`
 * `kms:GenerateDataKey`
 
 Note you can choose to allow principals to pre-encrypt secrets without granting them the `apply` permissions. This could
@@ -194,7 +201,7 @@ You should understand the following points before deciding to use this module.
    moved. 
 2. This module does not remove a single point of failure for secret compromises. When using 
    `aws_secretsmanager_secret_version` this single point of failure is granting access to the Terraform state file. 
-   When using this module the single point of failure is granting `kms:Decrypt` permission on the KMS key.
+   When using this module, the single point of failure is granting `kms:Decrypt` permission on the KMS key.
 3. When using this module you may be tempted to store your encrypted secrets in version control. If you do this, 
    understand that granting someone `kms:Decrypt` on the KMS key grants them access to all values _ever_ encrypted with 
    that key.

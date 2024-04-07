@@ -1,7 +1,7 @@
 # Stateless Secret Terraform Module
 
-A module for populating an `aws_secretsmanager_secret`'s value, without saving the value to state. 
-Uses the AWS CLI to set the secret value, which must be configured separately to Terraform's AWS provider.
+A module for populating an `aws_secretsmanager_secret`'s value, without saving the value to state. Uses the `aws` CLI
+and `aws-encryption-cli` to set the secret value, which must be configured separately to Terraform's AWS provider.
 
 See the [root README](../../README.md) for limitations, and considerations of use.
 
